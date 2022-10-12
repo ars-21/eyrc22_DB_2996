@@ -12,9 +12,9 @@ pkg load control;
 ##*  Version: 2.0.0
 ##*  Date: September 20, 2022
 ##*
-##*  Team ID :
-##*  Team Leader Name:
-##*  Team Member Name
+##*  Team ID : 2996
+##*  Team Leader Name: Janhavi Deshpande
+##*  Team Member Name: Vedant Ramesh Nimje
 ##*
 ##*
 ##*  Author: e-Yantra Project, Department of Computer Science
@@ -53,7 +53,7 @@ function draw_pulley(y)
   ml = 0.2;                  ## Mass Length
   mb = 0.1;                  ## Mass Breadth
   x1 = y(1);
-  x2 = L-y(1);
+  x2 = L - y(1);
   hold on;
   clf;
   axis equal;
@@ -170,8 +170,8 @@ endfunction
 ##          calculated using LQR
 function [t,y] = lqr_pulley(m1, m2, g, r, y_setpoint, y0)
   [A, B] = pulley_AB_matrix(m1, m2, g, r);
-  Q = [100 0; 0 10];
-  R = 0.01;
+  Q = [180 0; 0 1];
+  R = 1;
   K = lqr(A,B,Q,R);
   tspan = 0:0.1:10;                  ## Initialise time step
   [t,y] = ode45(@(t,y)pulley_dynamics(y, m1, m2, g, r,-K*(y - y_setpoint)),tspan,y0);
@@ -184,13 +184,14 @@ endfunction
 ##          gravity g and radius of pulley are defined here.
 function simple_pulley_main()
   m1 = 7.5;
-  m2 = 7.51;
+  m2 = 7.6;
   g = 9.8;
   r = 0.2;
-  y0 = [0.5 ; 0];                   ## Initial condtion
-  y_setpoint = [0.75; 0];              ## Set Point
+  y0 = [0.75 ; 0];                   ## Initial condtion
+  y_setpoint2 = [0.8; 0];              ## Set Point
+  y_setpoint = [0.4;0];
   ##[t,y] = sim_pulley(m1, m2, g, r, y0);
-  [t,y] = pole_place_pulley(m1, m2, g, r, y_setpoint, y0)
+  [t,y] = pole_place_pulley(m1, m2, g, r, y_setpoint2, y0)
   ##[t,y] = lqr_pulley(m1, m2, g, r, y_setpoint, y0)
 
   for k = 1:length(t)
