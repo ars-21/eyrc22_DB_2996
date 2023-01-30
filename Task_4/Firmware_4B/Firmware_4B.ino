@@ -57,10 +57,15 @@ int sendpwm = 0;
 float k[4] = {-104.4799, -9.7686, -0.7071, -0.8402};
 
 
-//Pin Definition Declaration for NIDEC Motor on eYFi-Mega
+//Pin Definition Declarations for NIDEC Motor on eYFi-Mega
 #define brake         8  //brake=0, go=1                    Green Wire(NIDEC Motor)
 #define cw            4  //cw=1, ccw=0                      Orange Wire(NIDEC Motor)
 #define rpm           9  //PWM=255=stop, PWM=0=max_speed    Yellow Wire(NIDEC Motor)
+
+// Pin Definition Declarations for DC Motor on eYFi-Mega
+#define enA           7
+#define in1           22
+#define in2           23
 
 
 /////////////NIDEC Motor//////////////
