@@ -5,7 +5,7 @@
  *  Theme - Delivery Bike
  *  Stage - 2
  *  
- *  Task - 4A
+ *  Task - 4B
  *  
  *  Team ID : 2996
  *  
@@ -156,7 +156,6 @@ void dc_motor_init()
 // Eg call: dc_motor_forward(100);
 void dc_motor_forward(int enablePWM)
 {
-  Serial.println(run_rear_motor);
   analogWrite(enA, enablePWM);
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
@@ -229,19 +228,19 @@ void loop()
   Serial.print("|");
 
   //Thresholding PWM values
-  if (sendpwm < 10 and sendpwm > 0)
+  if (sendpwm < 20 and sendpwm > 0)
   {
-    sendpwm = 10;
+    sendpwm = 20;
   }
-  else if (sendpwm > -10 and sendpwm < 0)
+  else if (sendpwm > -20 and sendpwm < 0)
   {
-    sendpwm = -10;
+    sendpwm = -20;
   }
   
   nidec_motor_control(sendpwm);
 
   //Giving DC motor required PWM
-  dc_motor_forward(50);
+  dc_motor_forward(60);
 
   //Debugging - to print on Serial Monitor
   Serial.print(sendpwm);
