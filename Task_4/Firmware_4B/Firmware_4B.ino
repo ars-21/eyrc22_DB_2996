@@ -54,7 +54,7 @@ float prev_pwm = 0;
 int sendpwm = 0;
 
 //k[4]: K matrix, obtained from Octave modelling 
-float k[4] = {-104.4799, -9.7686, -0.7071, -0.8402};
+float k[4] = {-147.4636  , -10.0932  ,  -0.6325  ,  -0.7195};
 
 
 //Pin Definition Declarations for NIDEC Motor on eYFi-Mega
@@ -200,15 +200,14 @@ void setup()
 void loop() 
 {
   curr_time = millis();
-  elapsed_time = ((curr_time - prev_time)*0.1);
-
-
+  elapsed_time = ((curr_time - prev_time)*0.001);
+  
   x1 = ((x*3.14159)/180); //Converts x (in degrees) to radians
   x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
   float u = (k[0]*(x1) + k[1]*x_dot); // u = -K*x, from LQR controller
   
   prev_pwm = pwm;
-  pwm = 1.305*u*elapsed_time; // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
+  pwm = ((0.0607*u*elapsed_time)/0.0001663); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
   sendpwm = round(pwm); //Round PWM frequency since we can only give 'int' PWM frequency
 
   //If-else ladder for limiting sent PWM value
