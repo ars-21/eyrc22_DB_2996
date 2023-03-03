@@ -19,6 +19,7 @@
 
 #include "Wire.h"
 #include <MPU6050_light.h>
+#include <Servo.h> 
 #include <math.h>
 
 
@@ -54,8 +55,9 @@ float prev_pwm = 0;
 int sendpwm = 0;
 
 //k[4]: K matrix, obtained from Octave modelling 
-float k[4] = {-147.4636  , -10.0932  ,  -0.6325  ,  -0.7195};
-
+float k[4] = {-127.9829, -8.9278, -0.4986, -0.5686};
+int count = 0;
+float init_sum = 0;
 
 //Pin Definition Declarations for NIDEC Motor on eYFi-Mega
 #define brake         8  //brake=0, go=1                    Green Wire(NIDEC Motor)
@@ -66,6 +68,12 @@ float k[4] = {-147.4636  , -10.0932  ,  -0.6325  ,  -0.7195};
 #define enA           7
 #define in1           22
 #define in2           23
+
+
+// Create a servo object
+Servo Servo1;
+int pos=0;
+#define servoPin      6   // Declare the Servo pin
 
 
 /////////////NIDEC Motor//////////////
@@ -173,6 +181,29 @@ void dc_motor_backward(int enablePWM)
 }
 //////////////////////////////////////
 
+///////Servo//////
+void servo_init()
+{
+  Servo1.attach(servoPin);
+  pos=90;
+  Servo1.write(pos);
+}
+void servo_move(int nextpos)
+{ 
+  if(pos<nextpos)
+  { for(int i=pos;i<=nextpos;i+=1)
+    { Servo1.write(i);
+      delay(10);}
+  }
+  else if(pos>nextpos)
+  { for(int i=pos;i>=nextpos;i-=1)
+    { Servo1.write(i);
+      delay(10); }
+  }
+  else  { pos=nextpos; }
+  pos=nextpos;
+}
+
 
 //Function name: setup()
 //Logic: Initialises the MPU6050 and the NIDEC motor
@@ -193,22 +224,43 @@ void setup()
   Serial.println("NIDEC initialized\n");
   timer1_init(); 
   Serial.println("Timer initialized\n");
+  servo_init();
+  Serial.println("Servo initialized\n");
 }
 
 
 // Main loop function
 void loop() 
 {
+  if(count < 201)
+  {
+    if (count < 200 and count > 100){
+      init_sum += (x*3.14159/180);
+      //return;
+    }
+    count++;
+  }
   curr_time = millis();
-  elapsed_time = ((curr_time - prev_time)*0.001);
-  
+  elapsed_time = ((curr_time - prev_time)*0.1);
+
+
   x1 = ((x*3.14159)/180); //Converts x (in degrees) to radians
   x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
-  float u = (k[0]*(x1) + k[1]*x_dot); // u = -K*x, from LQR controller
+  float u = (k[0]*(x1 - (init_sum/50)) + k[1]*x_dot); // u = -K*x, from LQR controller
   
-  prev_pwm = pwm;
-  pwm = ((0.0607*u*elapsed_time)/0.0001663); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
+  pwm = (1.305*u*elapsed_time); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
+
   sendpwm = round(pwm); //Round PWM frequency since we can only give 'int' PWM frequency
+  
+//  //Loop to increase response when bike tilts beyond a certain threshold
+//  if((x1 - (init_sum/50)) > 0.05)
+//  {
+//     nidec_motor_control(180);
+//  }
+//  else if((x1 - (init_sum/50)) < -0.05)
+//  {
+//     nidec_motor_control(-180); 
+//  }
 
   //If-else ladder for limiting sent PWM value
   if (sendpwm>255){
@@ -218,7 +270,7 @@ void loop()
     sendpwm = -255;
   }
 
-  //Debugging - to print on Serial Monitor
+  //Debugging
   Serial.print(x1);
   Serial.print("|");
   Serial.print(x_dot);
@@ -227,26 +279,20 @@ void loop()
   Serial.print("|");
 
   //Thresholding PWM values
-  if (sendpwm < 20 and sendpwm > 0)
-  {
-    sendpwm = 20;
-  }
-  else if (sendpwm > -20 and sendpwm < 0)
-  {
-    sendpwm = -20;
-  }
+//  if (sendpwm < 10 and sendpwm > 0)
+//  {
+//    sendpwm = 10;
+//  }
+//  else if (sendpwm > -10 and sendpwm < 0)
+//  {
+//    sendpwm = -10;
+//  }
   
   nidec_motor_control(sendpwm);
-
-  //Giving DC motor required PWM
-  dc_motor_forward(60);
-
-  //Debugging - to print on Serial Monitor
   Serial.print(sendpwm);
+  servo_move(70);
   Serial.println("|");
-
-  //Assigning values from previous time step
+  dc_motor_forward(60);
   prev_time = curr_time;
   prev_x = x1;
-  
 }

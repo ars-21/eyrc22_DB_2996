@@ -26,6 +26,11 @@ float k[4] = {-143.8081, -14.7661, -1.0000, -1.2089};
 #define in1           22
 #define in2           23
 
+Servo Servo1;  // create servo object to control a servo
+// twelve servo objects can be created on most boards
+#define servoPin      6   // Declare the Servo pin
+int pos = 0;    // variable to store the servo position
+
 
 /////////////NIDEC Motor//////////////
 void nidec_motor_init()
@@ -105,94 +110,118 @@ void dc_motor_backward(int enablePWM)
 }
 //////////////////////////////////////
 
+void servo_init()
+{
+  Servo1.attach(servoPin);
+  pos=90;
+  Servo1.write(pos);
+}
+void servo_move(int nextpos)
+{ 
+  if(pos<nextpos)
+  { for(int i=pos;i<=nextpos;i+=1)
+    { Servo1.write(i);
+      Serial.println(i);
+      delay(10);}
+  }
+  else if(pos>nextpos)
+  { for(int i=pos;i>=nextpos;i-=1)
+    { Servo1.write(i);
+      Serial.println(i);
+      delay(10); }
+  }
+  else  { pos=nextpos; }
+  pos=nextpos;
+}
+
 
 void setup() 
 {
   Serial.begin(9600);
-  Wire.begin();
-  
-  byte status = mpu.begin();
-  Serial.print(F("MPU6050 status: "));
-  Serial.println(status);
-  while(status!=0){ } // stop everything if could not connect to MPU6050
-  Serial.println("MPU begin done!\n");
-
-  Serial.println("Begin Device initialization:\n");
-  nidec_motor_init();
-  Serial.println("NIDEC initialized\n");
-  timer1_init(); 
-  Serial.println("Timer initialized\n");
-  //servo_init();
-  //Serial.println("Servo initialized\n");
-  dc_motor_init();
-  Serial.println("DC Motor initialized\n");
-  rear_pwm = 45;
+//  Wire.begin();
+//  
+//  byte status = mpu.begin();
+//  Serial.print(F("MPU6050 status: "));
+//  Serial.println(status);
+//  while(status!=0){ } // stop everything if could not connect to MPU6050
+//  Serial.println("MPU begin done!\n");
+//
+//  Serial.println("Begin Device initialization:\n");
+//  nidec_motor_init();
+//  Serial.println("NIDEC initialized\n");
+//  timer1_init(); 
+//  Serial.println("Timer initialized\n");
+  servo_init();
+  Serial.println("Servo initialized\n");
+//  dc_motor_init();
+//  Serial.println("DC Motor initialized\n");
+//  rear_pwm = 45;
 }
+//
+//void loop() 
+//{
+//  curr_time = millis();
+//  elapsed_time = ((curr_time - prev_time)*0.1);
+//
+//  float x1 = ((x*3.14159)/180);
+//  x_dot = (x1 - prev_x)/elapsed_time;
+//  float u = (k[0]*(x1) + k[1]*x_dot);
+//  prev_pwm = pwm;
+//  pwm = 1.305*u*elapsed_time;
+//
+//  if (x > 3 and x < -3){
+//    pwm = pwm;
+//  }
+//  else if (x > 3){
+//    pwm = -255;
+//  }
+//  else if (x < -3){
+//    pwm = 255;
+//  }
+//
+//  
+//  sendpwm = round(pwm);
+//  
+//  if (sendpwm > 255){
+//    sendpwm = 255;
+//  }
+//  else if (sendpwm < -255){
+//    sendpwm = -255;
+//  }
+//  
+//  nidec_motor_control(sendpwm);
+//  
+//  if (rear_pwm >= 45 and rear_pwm < 54){
+//    rear_pwm=round(l);
+//  }
+//  else{
+//    l=55;
+//    rear_pwm=round(l);
+//  }
+//
+//  if (x >= 3){
+//    rear_pwm = 45;
+//    l=45;
+//  }
+//  else if (x <= -3){
+//    rear_pwm = 45;
+//    l=45;
+//  }
+//  
+//  Serial.print(rear_pwm);
+//  Serial.print("|");
+//  Serial.println(l);
+//  Serial.println("Nice");
+//  dc_motor_forward(rear_pwm);
+//  prev_time = curr_time;
+//  prev_x = x1;
 
-void loop() 
-{
-  curr_time = millis();
-  elapsed_time = ((curr_time - prev_time)*0.1);
-
-  float x1 = ((x*3.14159)/180);
-  x_dot = (x1 - prev_x)/elapsed_time;
-  float u = (k[0]*(x1) + k[1]*x_dot);
-  prev_pwm = pwm;
-  pwm = 1.305*u*elapsed_time;
-
-  if (x > 3 and x < -3){
-    pwm = pwm;
-  }
-  else if (x > 3){
-    pwm = -255;
-  }
-  else if (x < -3){
-    pwm = 255;
-  }
-
-  
-  sendpwm = round(pwm);
-  
-  if (sendpwm > 255){
-    sendpwm = 255;
-  }
-  else if (sendpwm < -255){
-    sendpwm = -255;
-  }
-  
-  if (sendpwm < 10 and sendpwm > 0)
-  {
-    sendpwm = 10;
-  }
-  else if (sendpwm > -10 and sendpwm < 0)
-  {
-    sendpwm = -10;
-  }
-  nidec_motor_control(sendpwm);
-  
-  if (rear_pwm >= 45 and rear_pwm < 54){
-    rear_pwm=round(l);
-  }
-  else{
-    l=55;
-    rear_pwm=round(l);
-  }
-
-  if (x >= 3){
-    rear_pwm = 45;
-    l=45;
-  }
-  else if (x <= -3){
-    rear_pwm = 45;
-    l=45;
-  }
-  
-  Serial.print(rear_pwm);
-  Serial.print("|");
-  Serial.println(l);
-  Serial.println("Nice");
-  dc_motor_forward(rear_pwm);
-  prev_time = curr_time;
-  prev_x = x1;
-  
+void loop(){
+//  servo_move(180);
+//  delay(10);
+   servo_move(90);
+  delay(10);
+//  servo_move(0);
+//  delay(10);
 }
+  
