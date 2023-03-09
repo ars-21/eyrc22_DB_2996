@@ -3,12 +3,10 @@
 #include <Servo.h> 
 #include <math.h>
 
-
 MPU6050 mpu(Wire);
 
-
 // x: Angular deviation (roll) obtained from MPU6050, in degrees
-float x=0.0; 
+float x; 
 
 // x1: Angular deviation in radians
 float x1 = 0.0;
@@ -35,7 +33,7 @@ float prev_pwm = 0;
 int sendpwm = 0;
 
 //k[4]: K matrix, obtained from Octave modelling 
-float k[4] = {-127.9829, -8.9278, -0.4986, -0.5686};
+float k[4] = {  -222.5687  , -15.3226  ,  -1.0104  ,  -1.0145};
 
 int count = 0;
 float init_sum = 0;
@@ -43,12 +41,33 @@ float init_sum = 0;
 //Declare NIDEC Motor pins
 #define brake         8  //brake=0, go=1
 #define cw            4  //cw=1, ccw=0
-#define rpm           9  //PWM=255=stop, PWM=0=max_speed  
+#define rpm           9  //PWM=255=stop, PWM=0=max_speed 
+#define encodPinAL      2                      // encoder A pin (INT4)
+#define encodPinBL      3                      // encoder B pin (INT5)
+
+volatile int encoderPosAL = 0;                  // left count 
+float alpha = 0, prev_alpha = 0, alpha_dot = 0;             // count in prev. time step
 
 // Create a servo object
 Servo Servo1;
 int pos=0;
 #define servoPin      6   // Declare the Servo pin
+
+void rencoderL()  
+{                                  
+    if(digitalRead(encodPinBL)==HIGH)
+    {
+         encoderPosAL++;
+    }
+    else
+    {
+         encoderPosAL--;
+    }
+    if (encoderPosAL > 360 || encoderPosAL < -360){
+      encoderPosAL = 0; 
+    }
+    //Serial.println(encoderPosAL);
+}
 
 /////////////NIDEC Motor//////////////
 
@@ -77,8 +96,6 @@ void nidec_motor_control(int pwm)
     pwm = -pwm;} 
   else { digitalWrite(cw, LOW); }
   analogWrite(rpm, 255 - pwm);
-
-  
 }
 
 //Function name: nidec_motor_brake()
@@ -121,8 +138,8 @@ ISR (TIMER1_OVF_vect)
 void servo_init()
 {
   Servo1.attach(servoPin);
-  pos=90;
-  Servo1.write(pos);
+  pos=130;
+  Servo1.write(130);
 }
 void servo_move(int nextpos)
 { 
@@ -140,6 +157,10 @@ void servo_move(int nextpos)
   pos=nextpos;
 }
 
+int sign(int a){
+  return a/abs(a);
+}
+
 //Function name: setup()
 //Logic: Initialises the MPU6050 and the NIDEC motor
 
@@ -155,6 +176,11 @@ void setup()
   Serial.println("MPU begin done!\n");
 
   Serial.println("Begin Device initialization:\n");
+  pinMode(encodPinAL, INPUT);
+  pinMode(encodPinBL, INPUT);
+  digitalWrite(encodPinAL, HIGH);               // turn on pullup resistor
+  digitalWrite(encodPinBL, HIGH);               // turn on pullup resistor
+  attachInterrupt(digitalPinToInterrupt(2), rencoderL, RISING);        //
   nidec_motor_init();
   Serial.println("NIDEC initialized\n");
   timer1_init(); 
@@ -168,35 +194,25 @@ void setup()
 // Main loop function
 void loop() 
 {
-  if(count < 201)
-  {
-    if (count < 200 and count > 100){
-      init_sum += (x*3.14159/180);
-      //return;
-    }
-    count++;
+
+  if (count++ < 20){
+    init_sum = x;
+    return;
   }
+  
   curr_time = millis();
   elapsed_time = ((curr_time - prev_time)*0.1);
 
-
-  x1 = ((x*3.14159)/180); //Converts x (in degrees) to radians
+  float offset = (init_sum*3.14159/180) - 0.025;
+  x1 = (x*3.14159)/180; //Converts x (in degrees) to radians
   x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
-  float u = (k[0]*(x1 - (init_sum/50)) + k[1]*x_dot); // u = -K*x, from LQR controller
+  alpha = (encoderPosAL*3.14159)/180;
+  alpha_dot = (alpha - prev_alpha)/elapsed_time;
+  float u = (k[0]*(x1 - offset) + k[1]*x_dot + k[2]*alpha + k[3]*alpha_dot); // u = -K*x, from LQR controller
   
   pwm = (1.305*u*elapsed_time); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
 
   sendpwm = round(pwm); //Round PWM frequency since we can only give 'int' PWM frequency
-  
-//  //Loop to increase response when bike tilts beyond a certain threshold
-//  if((x1 - (init_sum/50)) > 0.05)
-//  {
-//     nidec_motor_control(180);
-//  }
-//  else if((x1 - (init_sum/50)) < -0.05)
-//  {
-//     nidec_motor_control(-180); 
-//  }
 
   //If-else ladder for limiting sent PWM value
   if (sendpwm>255){
@@ -207,34 +223,33 @@ void loop()
   }
 
   //Debugging
+  Serial.print(offset);
+  Serial.print("|");
   Serial.print(x1);
   Serial.print("|");
   Serial.print(x_dot);
   Serial.print("|");
-  Serial.print(pwm);
+  Serial.print(alpha);
   Serial.print("|");
+  Serial.print(alpha_dot);
+  //Serial.print("|");
 
-  //Thresholding PWM values
-//  if (sendpwm < 10 and sendpwm > 0)
-//  {
-//    sendpwm = 10;
-//  }
-//  else if (sendpwm > -10 and sendpwm < 0)
-//  {
-//    sendpwm = -10;
-//  }
+  //Serial.print(offset);
 
   if ((pwm > 0 && prev_pwm < 0)||(pwm < 0 && prev_pwm > 0)){
     nidec_motor_brake();
   }
   
   nidec_motor_control(sendpwm);
-  Serial.print(sendpwm);
-  servo_move(70);
-  Serial.println("|");
+  Serial.print("|");
+  Serial.println(sendpwm);
+  servo_move(135);
+  
 
   //Assigning values from previous time step
   prev_time = curr_time;
   prev_x = x1;
   prev_pwm = pwm;
+  prev_alpha = alpha;
+  
 }

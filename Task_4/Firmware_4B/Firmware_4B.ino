@@ -246,7 +246,7 @@ void loop()
 
   x1 = ((x*3.14159)/180); //Converts x (in degrees) to radians
   x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
-  float u = (k[0]*(x1 - (init_sum/50)) + k[1]*x_dot); // u = -K*x, from LQR controller
+  float u = (k[0]*(x1 - (init_sum/100)) + k[1]*x_dot); // u = -K*x, from LQR controller
   
   pwm = (1.305*u*elapsed_time); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
 
@@ -278,15 +278,9 @@ void loop()
   Serial.print(pwm);
   Serial.print("|");
 
-  //Thresholding PWM values
-//  if (sendpwm < 10 and sendpwm > 0)
-//  {
-//    sendpwm = 10;
-//  }
-//  else if (sendpwm > -10 and sendpwm < 0)
-//  {
-//    sendpwm = -10;
-//  }
+  if ((pwm > 0 && prev_pwm < 0)||(pwm < 0 && prev_pwm > 0)){
+    nidec_motor_brake();
+  }
   
   nidec_motor_control(sendpwm);
   Serial.print(sendpwm);
