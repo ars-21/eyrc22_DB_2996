@@ -31,9 +31,13 @@ float prev_pwm = 0;
 
 //sendpwm: PWM frequency to be sent to NIDEC motor, rounded from 'pwm'
 int sendpwm = 0;
+int rear_send = 0;
 
 //k[4]: K matrix, obtained from Octave modelling 
-float k[4] = {  -222.5687  , -15.3226  ,  -1.0104  ,  -1.0145};
+//float k[4] = {  -233.0391  , -16.0481  ,  0.9252  ,  1.0528};
+float k[4] = {    -212.2702  , -15.2923  ,  0.9057  ,  1.0366};
+//float k[4] = {-218.7902 ,  -15.0624  ,  -0.9932   , -0.9972};
+//   -233.0391   -16.0481    0.9252    1.0528
 
 int count = 0;
 float init_sum = 0;
@@ -52,6 +56,14 @@ float alpha = 0, prev_alpha = 0, alpha_dot = 0;             // count in prev. ti
 Servo Servo1;
 int pos=0;
 #define servoPin      6   // Declare the Servo pin
+
+// Pin Definition Declarations for DC Motor on eYFi-Mega
+#define enA           7
+#define in1           22
+#define in2           23
+
+//Pin Defs for Buzzer
+#define A12           
 
 void rencoderL()  
 {                                  
@@ -135,11 +147,50 @@ ISR (TIMER1_OVF_vect)
 }
 //////////////////////////////////////
 
+/////////////DC Motor//////////////
+
+//Function name: dc_motor_init()
+//Description: Used for initlialising the DC motor
+// Eg call: dc_motor_init();
+void dc_motor_init()
+{
+  pinMode(enA, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  
+  //Turn off motors - Initial state
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+}
+
+//Function name: dc_motor_forward(int enablePWM)
+//Input: enablePWM - Represents the PWM to be given to the DC motor
+//Description: Used for giving PWM frequency to the DC motor, and moves it in forward direction
+// Eg call: dc_motor_forward(100);
+void dc_motor_forward(int enablePWM)
+{
+  analogWrite(enA, enablePWM);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+}
+
+//Function name: dc_motor_backward(int enablePWM)
+//Input: enablePWM - Represents the PWM to be given to the DC motor
+//Description: Used for giving PWM frequency to the DC motor, and moves it in backward direction
+// Eg call: dc_motor_backward(100);
+void dc_motor_backward(int enablePWM)
+{
+  analogWrite(enA, enablePWM);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+}
+//////////////////////////////////////
+
 void servo_init()
 {
   Servo1.attach(servoPin);
-  pos=130;
-  Servo1.write(130);
+  pos=90;
+  Servo1.write(pos);
 }
 void servo_move(int nextpos)
 { 
@@ -185,7 +236,10 @@ void setup()
   Serial.println("NIDEC initialized\n");
   timer1_init(); 
   Serial.println("Timer initialized\n");
-
+  pinMode(29, OUTPUT);
+  digitalWrite(29, LOW);
+  delay(1000);
+  digitalWrite(29, HIGH);
   servo_init();
   Serial.println("Servo initialized\n");
 }
@@ -194,62 +248,74 @@ void setup()
 // Main loop function
 void loop() 
 {
+    count++;
+    x1 = (x*3.14159)/180; //Converts x (in degrees) to radians
 
-  if (count++ < 20){
-    init_sum = x;
-    return;
-  }
+    if(count < 201){
+       if (count < 200 and count > 100){
+           init_sum = init_sum + x1;
+           //return;
+       }
+    }
+    else {
+    
+      curr_time = millis();
+      elapsed_time = ((curr_time - prev_time)*0.1);
+    
+      
+      x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
+      alpha = (encoderPosAL*3.14159)/180;
+      alpha_dot = (alpha - prev_alpha)/elapsed_time;
+      float u = (k[0]*(x1 + 0.06) + k[1]*x_dot + k[2]*alpha + k[3]*alpha_dot); // u = -K*x, from LQR controller
+      
+      pwm = (1.305*u*elapsed_time); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
+    
+      sendpwm = round(pwm); //Round PWM frequency since we can only give 'int' PWM frequency
+    
+      //If-else ladder for limiting sent PWM value
+      if (sendpwm>255){
+        sendpwm = 255;
+      }
+      else if (sendpwm < -255){
+        sendpwm = -255;
+      }
+    
+      //Debugging
+      Serial.print(init_sum/100);
+      Serial.print("|");
+      Serial.print(x1);
+      Serial.print("|");
+      Serial.print(x_dot);
+      Serial.print("|");
+      Serial.print(alpha);
+      Serial.print("|");
+      Serial.print(alpha_dot);
+      Serial.println("|");
+    
+      if ((pwm > 0 && prev_pwm < 0)||(pwm < 0 && prev_pwm > 0)){
+        nidec_motor_brake();
+      }
   
-  curr_time = millis();
-  elapsed_time = ((curr_time - prev_time)*0.1);
-
-  float offset = (init_sum*3.14159/180) - 0.025;
-  x1 = (x*3.14159)/180; //Converts x (in degrees) to radians
-  x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
-  alpha = (encoderPosAL*3.14159)/180;
-  alpha_dot = (alpha - prev_alpha)/elapsed_time;
-  float u = (k[0]*(x1 - offset) + k[1]*x_dot + k[2]*alpha + k[3]*alpha_dot); // u = -K*x, from LQR controller
+      rear_send = 150;
   
-  pwm = (1.305*u*elapsed_time); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
-
-  sendpwm = round(pwm); //Round PWM frequency since we can only give 'int' PWM frequency
-
-  //If-else ladder for limiting sent PWM value
-  if (sendpwm>255){
-    sendpwm = 255;
-  }
-  else if (sendpwm < -255){
-    sendpwm = -255;
-  }
-
-  //Debugging
-  Serial.print(offset);
-  Serial.print("|");
-  Serial.print(x1);
-  Serial.print("|");
-  Serial.print(x_dot);
-  Serial.print("|");
-  Serial.print(alpha);
-  Serial.print("|");
-  Serial.print(alpha_dot);
-  //Serial.print("|");
-
-  //Serial.print(offset);
-
-  if ((pwm > 0 && prev_pwm < 0)||(pwm < 0 && prev_pwm > 0)){
-    nidec_motor_brake();
-  }
+      if (abs(x1*180/3.14159) > 30){
+        sendpwm = 0;
+        rear_send = 0;
+      }
+  //    
+      nidec_motor_control(sendpwm);
+      Serial.print("|");
+      Serial.println(sendpwm);
+      servo_move(86);
   
-  nidec_motor_control(sendpwm);
-  Serial.print("|");
-  Serial.println(sendpwm);
-  servo_move(135);
-  
-
-  //Assigning values from previous time step
-  prev_time = curr_time;
-  prev_x = x1;
-  prev_pwm = pwm;
-  prev_alpha = alpha;
-  
+  //    if (count++ > 500){
+  //      dc_motor_forward(rear_send);
+  //    }
+    
+      //Assigning values from previous time step
+      prev_time = curr_time;
+      prev_x = x1;
+      prev_pwm = pwm;
+      prev_alpha = alpha;
+     }
 }

@@ -232,21 +232,14 @@ void setup()
 // Main loop function
 void loop() 
 {
-  if(count < 201)
-  {
-    if (count < 200 and count > 100){
-      init_sum += (x*3.14159/180);
-      //return;
-    }
-    count++;
-  }
+  
   curr_time = millis();
   elapsed_time = ((curr_time - prev_time)*0.1);
 
 
   x1 = ((x*3.14159)/180); //Converts x (in degrees) to radians
   x_dot = (x1 - prev_x)/elapsed_time; // Calculation of x_dot (angular deviation rate)
-  float u = (k[0]*(x1 - (init_sum/100)) + k[1]*x_dot); // u = -K*x, from LQR controller
+  float u = (k[0]*(x1 - (0.09)) + k[1]*x_dot); // u = -K*x, from LQR controller
   
   pwm = (1.305*u*elapsed_time); // Multiplied by 'elapsed_time' to convert required torque to PWM frequency 
 
@@ -284,7 +277,7 @@ void loop()
   
   nidec_motor_control(sendpwm);
   Serial.print(sendpwm);
-  servo_move(70);
+  servo_move(87);
   Serial.println("|");
   dc_motor_forward(60);
   prev_time = curr_time;
