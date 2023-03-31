@@ -320,11 +320,15 @@ void loop()
   if (x > 3 and x < -3){
     pwm = pwm;
   }
-  else if (x > 3){
+  else if (x > 3 and x < 40){
     pwm = -255;
   }
-  else if (x < -3){
+  else if (x < -3 and x > -40){
     pwm = 255;
+  }
+  else if (x > 40 or x < -40)
+  {
+    pwm = 0;
   }
 
   sendpwm = round(pwm); //Round PWM frequency since we can only give 'int' PWM frequency
@@ -377,7 +381,8 @@ void loop()
   lsa[2] = (analogRead(A2));
   lsa[3] = (analogRead(A3));
   lsa[4] = (analogRead(A4));
-  pos = (0 * lsa[0] + 1000 * lsa[1] + 2000 * lsa[2] + 3000 * lsa[3] + 4000 * lsa[4]) / (lsa[0] + lsa[1] + lsa[2] + lsa[3] + lsa[4]);
+  //pos = (0 * lsa[0] + 1000 * lsa[1] + 2000 * lsa[2] + 3000 * lsa[3] + 4000 * lsa[4]) / (lsa[0] + lsa[1] + lsa[2] + lsa[3] + lsa[4]);
+  pos = (0 * lsa[1] + 2000 * lsa[2] + 4000 * lsa[3]) / (lsa[1] + lsa[2] + lsa[3])
   last_proportional = proportional;
   proportional = pos - 2000;
   derivative = proportional - last_proportional;
@@ -385,34 +390,40 @@ void loop()
   angle = proportional * Kp + integral * Ki + derivative * Kd;
   servo_move(round(angle));
 
-  dc_motor_forward(rear_pwm);
-
-  // Delivery Mechanism Code
-  if (curr_time > 120000)
-  {
-    servo_move2(20);
-  }
-  if (curr_time > 100000)
-  {
-    servo_move2(50);
-  }
-  else if (curr_time > 65000)
-  {
-    servo_move2(77);
-  }
-  else if (curr_time > 40500)
-  {
-    servo_move2(118);
-  }
-  else if(curr_time > 40000)
-  {
-    //dc_motor_forward(70);
-    servo_move2(150);
-  }
-  else
-  {
-    servo_move2(180);
-  }
+//  if (x < 40 and x > -40)
+//  {
+//    dc_motor_forward(rear_pwm);
+//  }
+//  else if (x > 40 or x < -40)
+//  {
+//    dc_motor_forward(0);
+//  }
+//  // Delivery Mechanism Code
+//  if (curr_time > 120000)
+//  {
+//    servo_move2(20);
+//  }
+//  if (curr_time > 100000)
+//  {
+//    servo_move2(50);
+//  }
+//  else if (curr_time > 65000)
+//  {
+//    servo_move2(77);
+//  }
+//  else if (curr_time > 40500)
+//  {
+//    servo_move2(118);
+//  }
+//  else if(curr_time > 40000)
+//  {
+//    //dc_motor_forward(70);
+//    servo_move2(150);
+//  }
+//  else
+//  {
+//    servo_move2(180);
+//  }
 
   //Assigning values from previous time step
   prev_time = curr_time;
