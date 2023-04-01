@@ -48,14 +48,14 @@ float pwm = 0;
 float prev_pwm = 0;
 
 //sendpwm: PWM frequency to be sent to NIDEC motor, rounded from 'pwm'
-int sendpwm = 0;
+volatile int sendpwm = 0;
 
 // For Rear DC Motor
 int rear_pwm = 45;
 float l = 45.0;
 
 //k[4]: K matrix, obtained from Octave modelling 
-float k[4] = {  -222.5687  , -15.3226  ,  1.0104  ,  1.0145};
+float k[4] = {    -212.2702  , -15.2923  ,  0.9057  ,  1.0366};
 
 // count: number of times the void loop() has run upto value 500
 // init_sum: offset of MPU6050 at the start
@@ -68,7 +68,7 @@ float alpha = 0, prev_alpha = 0, alpha_dot = 0;     // count in prev. time step
 // For Line Following
 int lsa[5] = {0};
 float pos=0, last_proportional=0, proportional=0, derivative=0, integral=0, angle=0;
-float Kp = 4.80, Ki = 2.15, Kd = 0.00;
+float Kp = 0, Ki = 0, Kd = 0.00;
 
 //Declare NIDEC Motor pins
 #define brake         8            //brake=0, go=1
